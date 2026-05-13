@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gallery of Champions — Pointing Dog Collective</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--gold:#c8a84b;--gold-light:#e2c97e;--black:#0a0a0a;--dark:#111111;--dark2:#1a1a1a;--dark3:#222222;--dark4:#2a2a2a;--cream:#f0e8d8;--cream-dim:#c4b89a;--white:#ffffff;
+--aa-color:#c8a84b;--sd-color:#4b96c8;--aa-doy-color:#e2c97e;--sd-doy-color:#7bc8e2;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--dark);color:var(--cream);font-family:'Source Sans 3',sans-serif;overflow-x:hidden;}
+
+.site-header{background:var(--black);border-bottom:1px solid rgba(200,168,75,0.2);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;}
+.site-brand{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--white);}
+.site-brand-sub{font-family:'Libre Baskerville',serif;font-style:italic;font-size:11px;color:var(--gold);}
+.back-btn{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--cream-dim);border:1px solid rgba(200,168,75,0.2);padding:8px 16px;cursor:pointer;background:none;transition:all 0.2s;text-decoration:none;display:inline-block;}
+.back-btn:hover{color:var(--gold);border-color:var(--gold);}
+
+/* HERO */
+.hero{background:var(--black);padding:80px 40px 60px;text-align:center;position:relative;overflow:hidden;border-bottom:3px solid var(--gold);}
+.hero::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 80px,rgba(200,168,75,0.015) 80px,rgba(200,168,75,0.015) 81px);}
+.hero-inner{position:relative;z-index:2;}
+.hero-trophy{font-size:56px;margin-bottom:20px;}
+.hero-eyebrow{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:6px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+.hero-title{font-family:'Oswald',sans-serif;font-size:clamp(48px,7vw,96px);font-weight:700;text-transform:uppercase;letter-spacing:-2px;color:var(--white);line-height:0.9;}
+.hero-title em{font-style:italic;color:var(--gold);font-family:'Libre Baskerville',serif;font-weight:400;}
+.hero-sub{font-family:'Libre Baskerville',serif;font-style:italic;font-size:17px;color:var(--cream-dim);margin-top:16px;}
+.hero-rule{width:80px;height:3px;background:var(--gold);margin:24px auto 0;}
+
+/* DIVISION NAV */
+.division-nav{background:var(--dark2);border-bottom:1px solid rgba(200,168,75,0.15);padding:0 40px;display:flex;gap:0;overflow-x:auto;}
+.div-tab{font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:18px 28px;color:var(--cream-dim);cursor:pointer;border-bottom:3px solid transparent;transition:all 0.2s;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;}
+.div-tab:hover{color:var(--cream);}
+.div-tab.active-aa{color:var(--aa-color);border-bottom-color:var(--aa-color);}
+.div-tab.active-sd{color:var(--sd-color);border-bottom-color:var(--sd-color);}
+.div-tab.active-aa-doy{color:var(--aa-doy-color);border-bottom-color:var(--aa-doy-color);}
+.div-tab.active-sd-doy{color:var(--sd-doy-color);border-bottom-color:var(--sd-doy-color);}
+
+/* DIVISION SECTIONS */
+.division-section{display:none;padding:0 40px 60px;max-width:1400px;margin:0 auto;}
+.division-section.active{display:block;}
+
+/* REIGNING CHAMP CARD */
+.reigning-wrap{padding:40px 0 0;}
+.reigning-label{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:5px;text-transform:uppercase;margin-bottom:16px;text-align:center;}
+.reigning-label.aa{color:var(--aa-color);}
+.reigning-label.sd{color:var(--sd-color);}
+.reigning-label.doy{color:var(--aa-doy-color);}
+.reigning-card{padding:40px;display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;position:relative;overflow:hidden;margin-bottom:40px;}
+.reigning-card.aa{background:linear-gradient(135deg,#1a1208,#0a0a0a);border:2px solid var(--aa-color);}
+.reigning-card.sd{background:linear-gradient(135deg,#081218,#0a0a0a);border:2px solid var(--sd-color);}
+.reigning-card.doy{background:linear-gradient(135deg,#1a1505,#0a0a0a);border:2px solid var(--aa-doy-color);}
+.reigning-year-bg{position:absolute;bottom:-20px;left:32px;font-family:'Oswald',sans-serif;font-size:140px;font-weight:700;opacity:0.07;line-height:1;}
+.reigning-year-bg.aa{color:var(--aa-color);}
+.reigning-year-bg.sd{color:var(--sd-color);}
+.reigning-content{position:relative;z-index:2;}
+.reigning-name{font-family:'Oswald',sans-serif;font-size:clamp(28px,3.5vw,52px);font-weight:700;text-transform:uppercase;letter-spacing:-1px;color:var(--white);line-height:1;margin-bottom:10px;}
+.reigning-handler{font-family:'Libre Baskerville',serif;font-style:italic;font-size:18px;margin-bottom:12px;}
+.reigning-handler.aa{color:var(--aa-color);}
+.reigning-handler.sd{color:var(--sd-color);}
+.reigning-meta{display:flex;gap:20px;flex-wrap:wrap;}
+.meta-item{font-size:13px;color:var(--cream-dim);}
+.meta-item strong{color:var(--cream);}
+.reigning-badge{text-align:center;padding:14px 24px;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;}
+.reigning-badge.aa{background:var(--aa-color);color:var(--black);}
+.reigning-badge.sd{background:var(--sd-color);color:var(--white);}
+.reigning-badge.doy{background:var(--aa-doy-color);color:var(--black);}
+.badge-sub{font-size:10px;letter-spacing:1px;margin-top:4px;opacity:0.7;}
+
+/* STATS ROW */
+.stats-row{display:flex;justify-content:center;gap:60px;flex-wrap:wrap;padding:28px 0 40px;border-top:1px solid rgba(200,168,75,0.1);border-bottom:1px solid rgba(200,168,75,0.1);margin-bottom:40px;}
+.stat{text-align:center;}
+.stat-num{font-family:'Oswald',sans-serif;font-size:36px;font-weight:700;line-height:1;}
+.stat-num.aa{color:var(--aa-color);}
+.stat-num.sd{color:var(--sd-color);}
+.stat-num.doy{color:var(--aa-doy-color);}
+.stat-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--cream-dim);margin-top:4px;}
+
+/* SEARCH & FILTER */
+.controls{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:24px;}
+.decade-filters{display:flex;gap:8px;flex-wrap:wrap;}
+.filter-btn{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;background:var(--dark3);border:1px solid rgba(200,168,75,0.15);color:var(--cream-dim);cursor:pointer;transition:all 0.2s;}
+.filter-btn:hover{color:var(--cream);}
+.filter-btn.active{color:var(--black);}
+.filter-btn.active-aa{background:var(--aa-color);border-color:var(--aa-color);color:var(--black);}
+.filter-btn.active-sd{background:var(--sd-color);border-color:var(--sd-color);color:var(--white);}
+.filter-btn.active-doy{background:var(--aa-doy-color);border-color:var(--aa-doy-color);color:var(--black);}
+.search-wrap{display:flex;}
+.search-input{background:var(--dark3);border:1px solid rgba(200,168,75,0.2);border-right:none;color:var(--cream);padding:8px 14px;font-size:13px;outline:none;width:220px;}
+.search-input:focus{border-color:var(--gold);}
+.search-btn{background:var(--gold);border:none;color:var(--black);padding:8px 14px;font-size:13px;cursor:pointer;}
+
+/* CHAMPIONS GRID */
+.decade-block{margin-bottom:40px;}
+.decade-header{font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;letter-spacing:-1px;padding-bottom:10px;margin-bottom:16px;border-bottom:1px solid rgba(200,168,75,0.15);}
+.decade-header.aa{color:var(--aa-color);}
+.decade-header.sd{color:var(--sd-color);}
+.decade-header.doy{color:var(--aa-doy-color);}
+.champ-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}
+.champ-card{background:var(--dark2);border:1px solid rgba(255,255,255,0.06);padding:18px 22px;transition:all 0.2s;position:relative;}
+.champ-card:hover{background:var(--dark3);}
+.champ-card.aa:hover{border-color:rgba(200,168,75,0.4);}
+.champ-card.sd:hover{border-color:rgba(75,150,200,0.4);}
+.champ-card.multi{border-left:3px solid var(--gold);}
+.champ-card.in-registry{border-left:3px solid #4bc864;}
+.champ-year{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:5px;}
+.champ-year.aa{color:var(--aa-color);}
+.champ-year.sd{color:var(--sd-color);}
+.champ-year.doy{color:var(--aa-doy-color);}
+.champ-name{font-family:'Oswald',sans-serif;font-size:17px;text-transform:uppercase;letter-spacing:0.5px;color:var(--white);margin-bottom:4px;}
+.champ-handler{font-size:13px;color:var(--cream-dim);}
+.champ-handler span{color:var(--cream);}
+.champ-owner{font-size:12px;color:var(--cream-dim);margin-top:2px;}
+.champ-notes{font-size:11px;color:var(--gold);margin-top:4px;font-style:italic;}
+.registry-tag{position:absolute;top:10px;right:10px;font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;}
+.registry-tag.in{background:rgba(75,200,100,0.15);color:#4bc864;border:1px solid rgba(75,200,100,0.3);}
+.registry-tag.out{background:rgba(255,255,255,0.05);color:var(--cream-dim);border:1px solid rgba(255,255,255,0.08);}
+.multi-tag{display:inline-block;font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;background:rgba(200,168,75,0.15);color:var(--gold);border:1px solid rgba(200,168,75,0.3);margin-left:6px;vertical-align:middle;}
+
+/* ADD FORM */
+.add-section{background:var(--dark2);border-top:1px solid rgba(200,168,75,0.1);padding:48px 40px;margin-top:20px;}
+.add-inner{max-width:800px;margin:0 auto;}
+.add-title{font-family:'Oswald',sans-serif;font-size:22px;letter-spacing:2px;text-transform:uppercase;color:var(--white);margin-bottom:6px;}
+.add-sub{font-size:13px;color:var(--cream-dim);margin-bottom:28px;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group label{font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);}
+.form-group input,.form-group select,.form-group textarea{background:var(--dark3);border:1px solid rgba(200,168,75,0.2);color:var(--cream);padding:10px 12px;font-family:'Source Sans 3',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;}
+.form-group input:focus,.form-group select:focus{border-color:var(--gold);}
+.form-group select option{background:var(--dark3);}
+.form-full{grid-column:1/-1;}
+.btn-gold{background:var(--gold);color:var(--black);font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:11px 26px;border:none;cursor:pointer;transition:background 0.2s;margin-top:16px;}
+.btn-gold:hover{background:var(--gold-light);}
+.form-msg{font-size:13px;padding:8px 14px;display:none;margin-top:10px;}
+.form-msg.success{background:rgba(75,200,100,0.15);color:#4bc864;border:1px solid rgba(75,200,100,0.3);}
+.form-msg.error{background:rgba(200,75,75,0.15);color:#e05555;border:1px solid rgba(200,75,75,0.3);}
+
+.loading{text-align:center;padding:60px;color:var(--cream-dim);font-family:'Oswald',sans-serif;letter-spacing:2px;text-transform:uppercase;font-size:12px;}
+.empty{text-align:center;padding:40px;color:var(--cream-dim);font-size:13px;}
+
+footer{background:var(--black);border-top:1px solid rgba(200,168,75,0.2);padding:32px 40px;text-align:center;}
+.footer-links{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:12px;}
+.footer-links a{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--cream-dim);text-decoration:none;cursor:pointer;transition:color 0.2s;}
+.footer-links a:hover{color:var(--gold);}
+.footer-copy{font-size:11px;color:var(--cream-dim);}
+
+@media(max-width:768px){
+  .site-header,.division-nav,.division-section,.add-section,footer{padding-left:20px;padding-right:20px;}
+  .reigning-card{grid-template-columns:1fr;padding:28px 20px;}
+  .stats-row{gap:28px;}
+  .hero{padding:60px 20px 40px;}
+}
+</style>
+</head>
+<body>
+
+<div class="site-header">
+  <div><div class="site-brand">Pointing Dog Collective</div><div class="site-brand-sub">Gallery of Champions</div></div>
+  <a href="/" class="back-btn">← Back to Site</a>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-trophy">🏆</div>
+    <div class="hero-eyebrow">Pointing Dog Collective — Official Records</div>
+    <div class="hero-title">Gallery of <em>Champions</em></div>
+    <div class="hero-sub">All-Age · Shooting Dog · Dog of the Year</div>
+    <div class="hero-rule"></div>
+  </div>
+</div>
+
+<!-- DIVISION TABS -->
+<div class="division-nav">
+  <button class="div-tab active-aa" onclick="switchDiv(this,'div-aa','aa')">🏆 All-Age National Championship</button>
+  <button class="div-tab" onclick="switchDiv(this,'div-sd','sd')">🎯 Shooting Dog National Championship</button>
+  <button class="div-tab" onclick="switchDiv(this,'div-aa-doy','aa-doy')">⭐ All-Age Dog of the Year</button>
+  <button class="div-tab" onclick="switchDiv(this,'div-sd-doy','sd-doy')">⭐ Shooting Dog of the Year</button>
+</div>
+
+<!-- ALL-AGE NATIONAL -->
+<div id="div-aa" class="division-section active">
+  <div class="reigning-wrap">
+    <div class="reigning-label aa">Reigning National Champion</div>
+    <div id="aa-reigning"><div class="loading">Loading...</div></div>
+  </div>
+  <div class="stats-row" id="aa-stats"></div>
+  <div class="controls">
+    <div class="decade-filters" id="aa-decade-filters">
+      <button class="filter-btn active-aa" onclick="filterDecade('aa',this,'all')">All Years</button>
+    </div>
+    <div class="search-wrap"><input class="search-input" id="aa-search" placeholder="Search dog or handler..." oninput="searchDiv('aa')"><button class="search-btn">🔍</button></div>
+  </div>
+  <div id="aa-list"><div class="loading">Loading All-Age Champions...</div></div>
+  <div style="font-size:12px;color:var(--cream-dim);margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.05)">Data sourced from <a href="https://www.amesplantation.org/past-national-champions" target="_blank" style="color:var(--gold)">Ames Plantation</a> · Grand Junction, Tennessee</div>
+</div>
+
+<!-- SHOOTING DOG NATIONAL -->
+<div id="div-sd" class="division-section">
+  <div class="reigning-wrap">
+    <div class="reigning-label sd">Reigning National Champion</div>
+    <div id="sd-reigning"><div class="loading">Loading...</div></div>
+  </div>
+  <div class="stats-row" id="sd-stats"></div>
+  <div class="controls">
+    <div class="decade-filters" id="sd-decade-filters">
+      <button class="filter-btn active-sd" onclick="filterDecade('sd',this,'all')">All Years</button>
+    </div>
+    <div class="search-wrap"><input class="search-input" id="sd-search" placeholder="Search dog or handler..." oninput="searchDiv('sd')"><button class="search-btn">🔍</button></div>
+  </div>
+  <div id="sd-list"><div class="loading">Loading Shooting Dog Champions...</div></div>
+  <div style="font-size:12px;color:var(--cream-dim);margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.05)">Data sourced from <a href="https://www.nationalopenshootingdog.com" target="_blank" style="color:var(--gold)">National Open Shooting Dog Championship</a> · Sedgefields Plantation, Union Springs, Alabama</div>
+</div>
+
+<!-- ALL-AGE DOG OF THE YEAR -->
+<div id="div-aa-doy" class="division-section">
+  <div class="reigning-wrap">
+    <div class="reigning-label doy" style="color:var(--aa-doy-color)">Current Dog of the Year</div>
+    <div id="aa-doy-reigning"><div class="loading">Loading...</div></div>
+  </div>
+  <div class="stats-row" id="aa-doy-stats"></div>
+  <div class="controls">
+    <div class="decade-filters" id="aa-doy-decade-filters">
+      <button class="filter-btn active-doy" onclick="filterDecade('aa-doy',this,'all')">All Years</button>
+    </div>
+    <div class="search-wrap"><input class="search-input" id="aa-doy-search" placeholder="Search dog or handler..." oninput="searchDiv('aa-doy')"><button class="search-btn">🔍</button></div>
+  </div>
+  <div id="aa-doy-list">
+    <div class="empty" style="padding:80px 40px;text-align:center">
+      <div style="font-size:40px;margin-bottom:16px">⭐</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:18px;letter-spacing:2px;text-transform:uppercase;color:var(--white);margin-bottom:8px">All-Age Dog of the Year</div>
+      <div style="font-size:14px;color:var(--cream-dim);margin-bottom:24px">Records for this division are being compiled.<br>Add the first entry using the form below.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SHOOTING DOG OF THE YEAR -->
+<div id="div-sd-doy" class="division-section">
+  <div class="reigning-wrap">
+    <div class="reigning-label doy" style="color:var(--sd-doy-color)">Current Dog of the Year</div>
+    <div id="sd-doy-reigning"><div class="loading">Loading...</div></div>
+  </div>
+  <div class="stats-row" id="sd-doy-stats"></div>
+  <div class="controls">
+    <div class="decade-filters" id="sd-doy-decade-filters">
+      <button class="filter-btn" style="background:var(--sd-doy-color);color:var(--black);border-color:var(--sd-doy-color)" onclick="filterDecade('sd-doy',this,'all')">All Years</button>
+    </div>
+    <div class="search-wrap"><input class="search-input" id="sd-doy-search" placeholder="Search dog or handler..." oninput="searchDiv('sd-doy')"><button class="search-btn">🔍</button></div>
+  </div>
+  <div id="sd-doy-list">
+    <div class="empty" style="padding:80px 40px;text-align:center">
+      <div style="font-size:40px;margin-bottom:16px">⭐</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:18px;letter-spacing:2px;text-transform:uppercase;color:var(--white);margin-bottom:8px">Shooting Dog of the Year</div>
+      <div style="font-size:14px;color:var(--cream-dim);margin-bottom:24px">Records for this division are being compiled.<br>Add the first entry using the form below.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CHAMPION FORM -->
+<div class="add-section">
+  <div class="add-inner">
+    <div class="add-title">Add Champion Record</div>
+    <div class="add-sub">Record a national champion or Dog of the Year winner to the Gallery of Champions.</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Division *</label>
+        <select id="add-div">
+          <option value="All-Age">All-Age National Championship</option>
+          <option value="Shooting Dog">Shooting Dog National Championship</option>
+          <option value="All-Age DOY">All-Age Dog of the Year</option>
+          <option value="Shooting Dog DOY">Shooting Dog of the Year</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Year *</label><input type="number" id="add-year" placeholder="2026" min="1900" max="2200"></div>
+      <div class="form-group"><label>Dog Name *</label><input type="text" id="add-name" placeholder="Registered name"></div>
+      <div class="form-group"><label>Handler *</label><input type="text" id="add-handler" placeholder="Handler's full name"></div>
+      <div class="form-group"><label>Owner</label><input type="text" id="add-owner" placeholder="Owner's full name"></div>
+      <div class="form-group"><label>Breed</label>
+        <select id="add-breed">
+          <option value="">Unknown</option>
+          <option>English Pointer</option>
+          <option>German Shorthaired Pointer</option>
+          <option>English Setter</option>
+          <option>Brittany</option>
+          <option>Vizsla</option>
+          <option>Weimaraner</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Championship / Event</label><input type="text" id="add-event" placeholder="e.g. Ames Plantation"></div>
+      <div class="form-group form-full"><label>Notes</label><textarea id="add-notes" style="min-height:50px;resize:vertical" placeholder="Placement details, runner-up, notes..."></textarea></div>
+    </div>
+    <button class="btn-gold" onclick="addChampion()">Add to Gallery</button>
+    <div id="add-msg" class="form-msg"></div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="/pedigree.html">COI & Pedigree Tool</a>
+    <a href="/#registry">Dog Registry</a>
+    <a href="/#scores">Leaderboard</a>
+  </div>
+  <div class="footer-copy">© 2026 Pointing Dog Collective · Records sourced from Ames Plantation & National Open Shooting Dog Championship</div>
+</footer>
+
+<script>
+const SURL='https://tbipdfaganpfqlsbdtuv.supabase.co';
+const SKEY='sb_publishable_lg7ePNVVAz8UMvZ_GLZmuA_Sk5JaT6Z';
+const sb=supabase.createClient(SURL,SKEY);
+
+// Map division key -> DB value
+const DIV_MAP={
+  'aa':'All-Age',
+  'sd':'Shooting Dog',
+  'aa-doy':'All-Age DOY',
+  'sd-doy':'Shooting Dog DOY'
+};
+const DIV_COLOR={'aa':'aa','sd':'sd','aa-doy':'doy','sd-doy':'doy'};
+
+let allData={};
+let filtered={};
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  const{data}=await sb.from('national_champions').select('*').order('year',{ascending:false});
+  if(!data)return;
+
+  // Group by division
+  ['aa','sd','aa-doy','sd-doy'].forEach(key=>{
+    const dbVal=DIV_MAP[key];
+    allData[key]=data.filter(c=>c.division===dbVal);
+    filtered[key]=allData[key];
+  });
+
+  renderReigning('aa');
+  renderReigning('sd');
+  renderReigningDOY('aa-doy');
+  renderReigningDOY('sd-doy');
+  renderStats('aa');
+  renderStats('sd');
+  buildDecadeFilters('aa');
+  buildDecadeFilters('sd');
+  renderList('aa',allData['aa']);
+  renderList('sd',allData['sd']);
+});
+
+function renderReigning(key){
+  const data=allData[key];
+  const el=document.getElementById(`${key}-reigning`);
+  if(!data?.length){el.innerHTML='';return;}
+  const c=data[0];
+  const col=DIV_COLOR[key];
+  el.innerHTML=`<div class="reigning-card ${col}">
+    <div class="reigning-year-bg ${col}">${c.year}</div>
+    <div class="reigning-content">
+      <div class="reigning-name">${c.dog_name}</div>
+      <div class="reigning-handler ${col}">Handled by ${c.handler_name||'—'}</div>
+      <div class="reigning-meta">
+        ${c.owner_name?`<div class="meta-item"><strong>Owner:</strong> ${c.owner_name}</div>`:''}
+        ${c.breed?`<div class="meta-item"><strong>Breed:</strong> ${c.breed}</div>`:''}
+        ${c.notes?`<div class="meta-item">${c.notes}</div>`:''}
+      </div>
+    </div>
+    <div class="reigning-badge ${col}">${c.year} National Champion<div class="badge-sub">${key==='aa'?'Ames Plantation':'Sedgefields Plantation'}</div></div>
+  </div>`;
+}
+
+function renderReigningDOY(key){
+  const data=allData[key];
+  const el=document.getElementById(`${key}-reigning`);
+  if(!data?.length){el.innerHTML='';return;}
+  const c=data[0];
+  el.innerHTML=`<div class="reigning-card doy">
+    <div class="reigning-year-bg doy">${c.year}</div>
+    <div class="reigning-content">
+      <div class="reigning-name">${c.dog_name}</div>
+      <div class="reigning-handler doy">Handled by ${c.handler_name||'—'}</div>
+      <div class="reigning-meta">
+        ${c.owner_name?`<div class="meta-item"><strong>Owner:</strong> ${c.owner_name}</div>`:''}
+        ${c.breed?`<div class="meta-item"><strong>Breed:</strong> ${c.breed}</div>`:''}
+      </div>
+    </div>
+    <div class="reigning-badge doy">${c.year} Dog of the Year<div class="badge-sub">${key==='aa-doy'?'All-Age':'Shooting Dog'}</div></div>
+  </div>`;
+}
+
+function renderStats(key){
+  const data=allData[key];
+  if(!data?.length)return;
+  const el=document.getElementById(`${key}-stats`);
+  const col=DIV_COLOR[key];
+  const handlers=new Set(data.map(c=>c.handler_name).filter(Boolean)).size;
+  const nameCounts={};
+  data.forEach(c=>{nameCounts[c.dog_name]=(nameCounts[c.dog_name]||0)+1;});
+  const multi=Object.values(nameCounts).filter(v=>v>1).length;
+  const years=data.map(c=>c.year);
+  const span=Math.max(...years)-Math.min(...years)+1;
+  el.innerHTML=`
+    <div class="stat"><div class="stat-num ${col}">${data.length}</div><div class="stat-label">Total Champions</div></div>
+    <div class="stat"><div class="stat-num ${col}">${handlers}</div><div class="stat-label">Unique Handlers</div></div>
+    <div class="stat"><div class="stat-num ${col}">${multi}</div><div class="stat-label">Multi-Year Winners</div></div>
+    <div class="stat"><div class="stat-num ${col}">${span}</div><div class="stat-label">Years of History</div></div>`;
+}
+
+function buildDecadeFilters(key){
+  const data=allData[key];
+  const col=DIV_COLOR[key];
+  const decades=new Set(data.map(c=>Math.floor(c.year/10)*10));
+  const f=document.getElementById(`${key}-decade-filters`);
+  Array.from(decades).sort((a,b)=>b-a).forEach(d=>{
+    const btn=document.createElement('button');
+    btn.className=`filter-btn`;
+    btn.textContent=d+'s';
+    btn.onclick=function(){filterDecade(key,this,d);};
+    f.appendChild(btn);
+  });
+}
+
+function filterDecade(key,btn,decade){
+  const col=DIV_COLOR[key];
+  document.querySelectorAll(`#${key}-decade-filters .filter-btn`).forEach(b=>{
+    b.classList.remove('active-aa','active-sd','active-doy');
+    b.style.background='';b.style.color='';b.style.borderColor='';
+  });
+  btn.classList.add(`active-${col}`);
+  const data=decade==='all'?allData[key]:allData[key].filter(c=>Math.floor(c.year/10)*10===decade);
+  filtered[key]=data;
+  renderList(key,data);
+}
+
+function searchDiv(key){
+  const q=document.getElementById(`${key}-search`).value.toLowerCase().trim();
+  const data=allData[key].filter(c=>
+    c.dog_name.toLowerCase().includes(q)||
+    (c.handler_name||'').toLowerCase().includes(q)||
+    (c.owner_name||'').toLowerCase().includes(q)
+  );
+  renderList(key,data);
+}
+
+function getMultiMap(key){
+  const counts={};
+  allData[key].forEach(c=>{counts[c.dog_name]=(counts[c.dog_name]||0)+1;});
+  return counts;
+}
+
+function renderList(key,data){
+  const el=document.getElementById(`${key}-list`);
+  if(!data?.length){el.innerHTML='<div class="empty">No records found</div>';return;}
+  const col=DIV_COLOR[key];
+  const multiMap=getMultiMap(key);
+
+  const byDecade={};
+  data.forEach(c=>{
+    const d=Math.floor(c.year/10)*10;
+    byDecade[d]=byDecade[d]||[];
+    byDecade[d].push(c);
+  });
+
+  el.innerHTML=Object.keys(byDecade).sort((a,b)=>b-a).map(decade=>`
+    <div class="decade-block">
+      <div class="decade-header ${col}">${decade}s</div>
+      <div class="champ-grid">
+        ${byDecade[decade].map(c=>{
+          const isMulti=multiMap[c.dog_name]>1;
+          const inReg=!!c.dog_id;
+          return `<div class="champ-card ${col}${isMulti?' multi':''}${inReg?' in-registry':''}">
+            <span class="registry-tag ${inReg?'in':'out'}">${inReg?'In Registry':'Not Registered'}</span>
+            <div class="champ-year ${col}">${c.year}${isMulti?'<span class="multi-tag">Multi-Champ</span>':''}</div>
+            <div class="champ-name">${c.dog_name}</div>
+            <div class="champ-handler">Handler: <span>${c.handler_name||'—'}</span></div>
+            ${c.owner_name?`<div class="champ-owner">Owner: ${c.owner_name}</div>`:''}
+            ${c.breed?`<div class="champ-owner">${c.breed}</div>`:''}
+            ${c.notes?`<div class="champ-notes">${c.notes}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function switchDiv(btn,divId,key){
+  document.querySelectorAll('.div-tab').forEach(t=>{t.className='div-tab';});
+  document.querySelectorAll('.division-section').forEach(s=>s.classList.remove('active'));
+  btn.classList.add(`active-${key}`);
+  document.getElementById(divId).classList.add('active');
+  // Load DOY if not loaded
+  if((key==='aa-doy'||key==='sd-doy')&&allData[key]?.length){
+    renderList(key,allData[key]);
+    renderStats(key);
+  }
+}
+
+async function addChampion(){
+  const msg=document.getElementById('add-msg');
+  const year=document.getElementById('add-year').value;
+  const name=document.getElementById('add-name').value.trim();
+  const handler=document.getElementById('add-handler').value.trim();
+  const div=document.getElementById('add-div').value;
+  if(!year||!name||!handler){showMsg(msg,'error','Year, dog name, and handler required');return;}
+
+  const{data:dogData}=await sb.from('dogs').select('id').ilike('registered_name',`%${name}%`).limit(1);
+  const dogId=dogData?.[0]?.id||null;
+
+  const{error}=await sb.from('national_champions').insert({
+    year:parseInt(year),dog_name:name,handler_name:handler,
+    owner_name:document.getElementById('add-owner').value||null,
+    breed:document.getElementById('add-breed').value||null,
+    notes:document.getElementById('add-notes').value||null,
+    division:div, dog_id:dogId
+  });
+  if(error){showMsg(msg,'error',error.message);return;}
+
+  if(dogId){
+    const titleAbbr=div.includes('DOY')?'DOY':'NFC';
+    await sb.from('titles').insert({dog_id:dogId,title_abbr:titleAbbr,title_full:div,org:'Field Trial',date_earned:`${year}-01-01`});
+  }
+
+  showMsg(msg,'success',`${name} added to the Gallery of Champions!`);
+  ['add-year','add-name','add-handler','add-owner','add-notes'].forEach(id=>{document.getElementById(id).value='';});
+
+  // Reload
+  const{data}=await sb.from('national_champions').select('*').order('year',{ascending:false});
+  if(data){
+    ['aa','sd','aa-doy','sd-doy'].forEach(k=>{
+      allData[k]=data.filter(c=>c.division===DIV_MAP[k]);
+      filtered[k]=allData[k];
+    });
+    renderReigning('aa');renderReigning('sd');
+    renderReigningDOY('aa-doy');renderReigningDOY('sd-doy');
+    renderStats('aa');renderStats('sd');
+    renderList('aa',allData['aa']);renderList('sd',allData['sd']);
+  }
+}
+
+function showMsg(el,type,text){if(typeof el==='string')el=document.getElementById(el);el.style.display='block';el.className='form-msg '+type;el.textContent=text;setTimeout(()=>el.style.display='none',6000);}
+</script>
+</body>
+</html>
