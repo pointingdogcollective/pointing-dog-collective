@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedigree & COI Calculator — Pointing Dog Collective</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --gold: #c8a84b; --gold-light: #e2c97e; --black: #0a0a0a; --dark: #111111;
+  --dark2: #1a1a1a; --dark3: #222222; --dark4: #2a2a2a; --cream: #f0e8d8;
+  --cream-dim: #c4b89a; --white: #ffffff;
+  --green: #4bc864; --yellow: #e8c84b; --orange: #e8884b; --red: #e05555;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--dark); color:var(--cream); font-family:'Source Sans 3',sans-serif; min-height:100vh; }
+
+/* HEADER */
+.header { background:var(--black); border-bottom:1px solid rgba(200,168,75,0.2); padding:16px 40px; display:flex; align-items:center; justify-content:space-between; }
+.header-brand { font-family:'Oswald',sans-serif; font-size:16px; font-weight:600; letter-spacing:3px; text-transform:uppercase; color:var(--white); }
+.header-sub { font-family:'Libre Baskerville',serif; font-style:italic; font-size:11px; color:var(--gold); }
+.back-btn { font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--cream-dim); text-decoration:none; border:1px solid rgba(200,168,75,0.2); padding:8px 16px; transition:all 0.2s; cursor:pointer; background:none; }
+.back-btn:hover { color:var(--gold); border-color:var(--gold); }
+
+/* TABS */
+.page-tabs { background:var(--dark2); border-bottom:1px solid rgba(200,168,75,0.15); display:flex; padding:0 40px; }
+.page-tab { font-family:'Oswald',sans-serif; font-size:13px; letter-spacing:2px; text-transform:uppercase; padding:18px 28px; color:var(--cream-dim); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; }
+.page-tab:hover { color:var(--gold); }
+.page-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+.tab-content { display:none; padding:40px; max-width:1400px; margin:0 auto; }
+.tab-content.active { display:block; }
+
+/* PEDIGREE TREE */
+.pedigree-builder { display:grid; gap:24px; }
+.tree-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:12px; }
+.tree-title { font-family:'Oswald',sans-serif; font-size:20px; letter-spacing:2px; text-transform:uppercase; color:var(--white); }
+.tree-subtitle { font-size:13px; color:var(--cream-dim); margin-top:4px; }
+
+.pedigree-tree { display:flex; gap:0; overflow-x:auto; padding:20px 0; min-height:400px; }
+.gen-col { display:flex; flex-direction:column; min-width:220px; padding:0 6px; }
+.gen-label { font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); text-align:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid rgba(200,168,75,0.2); }
+.gen-nodes { display:flex; flex-direction:column; flex:1; justify-content:space-around; }
+
+.pedigree-node {
+  background:var(--dark3); border:1px solid rgba(200,168,75,0.15);
+  padding:10px 12px; margin:3px 0; position:relative; cursor:pointer;
+  transition:border-color 0.2s, background 0.2s; min-height:60px;
+  display:flex; flex-direction:column; justify-content:center;
+}
+.pedigree-node:hover { border-color:var(--gold); background:var(--dark4); }
+.pedigree-node.filled { border-color:rgba(200,168,75,0.4); }
+.pedigree-node.sire-line { border-left:3px solid #4b96c8; }
+.pedigree-node.dam-line { border-left:3px solid #c84b96; }
+.pedigree-node.subject { border:2px solid var(--gold); background:var(--dark4); }
+.pedigree-node.empty-node { border-style:dashed; opacity:0.5; }
+.pedigree-node.empty-node:hover { opacity:1; }
+.node-name { font-family:'Oswald',sans-serif; font-size:13px; color:var(--white); line-height:1.2; }
+.node-details { font-size:11px; color:var(--cream-dim); margin-top:3px; }
+.node-add { font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--gold); opacity:0.6; }
+.node-coi-badge { position:absolute; top:4px; right:4px; font-family:'Oswald',sans-serif; font-size:9px; padding:2px 5px; }
+
+/* COI DISPLAY */
+.coi-panel { background:var(--dark2); border:1px solid rgba(200,168,75,0.2); padding:32px; margin-bottom:32px; }
+.coi-main { display:flex; align-items:center; gap:40px; flex-wrap:wrap; margin-bottom:24px; }
+.coi-number { font-family:'Oswald',sans-serif; font-size:72px; font-weight:700; line-height:1; }
+.coi-number.coi-green { color:var(--green); }
+.coi-number.coi-yellow { color:var(--yellow); }
+.coi-number.coi-orange { color:var(--orange); }
+.coi-number.coi-red { color:var(--red); }
+.coi-label { font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--cream-dim); margin-top:4px; }
+.coi-desc { font-size:14px; line-height:1.6; color:var(--cream-dim); max-width:400px; }
+.coi-bar-wrap { flex:1; min-width:200px; }
+.coi-bar-track { height:12px; background:var(--dark3); border-radius:0; overflow:hidden; margin-bottom:8px; }
+.coi-bar-fill { height:100%; transition:width 0.8s ease; }
+.coi-scale { display:flex; justify-content:space-between; font-size:10px; color:var(--cream-dim); font-family:'Oswald',sans-serif; letter-spacing:1px; }
+
+/* ANCESTRY TABLE */
+.ancestry-section { margin-top:24px; }
+.section-label { font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); margin-bottom:16px; }
+.ancestor-row { display:flex; align-items:center; gap:16px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+.ancestor-name { font-family:'Oswald',sans-serif; font-size:14px; color:var(--white); min-width:200px; }
+.ancestor-pct { font-family:'Oswald',sans-serif; font-size:14px; color:var(--gold); min-width:60px; text-align:right; }
+.ancestor-bar { flex:1; height:8px; background:var(--dark3); }
+.ancestor-bar-fill { height:100%; background:var(--gold); opacity:0.6; transition:width 0.5s; }
+.ancestor-side { font-size:11px; padding:2px 8px; font-family:'Oswald',sans-serif; letter-spacing:1px; text-transform:uppercase; }
+.side-both { background:rgba(200,168,75,0.2); color:var(--gold); }
+.side-sire { background:rgba(75,150,200,0.2); color:#4b96c8; }
+.side-dam { background:rgba(200,75,150,0.2); color:#c84b96; }
+
+/* BREEDING SIM */
+.breeding-grid { display:grid; grid-template-columns:1fr auto 1fr; gap:24px; align-items:start; margin-bottom:32px; }
+.breeding-dog-card { background:var(--dark2); border:1px solid rgba(200,168,75,0.2); padding:24px; }
+.breeding-dog-title { font-family:'Oswald',sans-serif; font-size:13px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); margin-bottom:16px; }
+.breeding-x { font-family:'Oswald',sans-serif; font-size:48px; color:var(--gold); text-align:center; padding-top:60px; }
+.dog-search-wrap { position:relative; }
+.dog-search-input { width:100%; background:var(--dark3); border:1px solid rgba(200,168,75,0.2); color:var(--cream); padding:12px 16px; font-size:14px; outline:none; font-family:'Source Sans 3',sans-serif; }
+.dog-search-input:focus { border-color:var(--gold); }
+.dog-dropdown { position:absolute; top:100%; left:0; right:0; background:var(--dark3); border:1px solid rgba(200,168,75,0.3); border-top:none; z-index:100; max-height:200px; overflow-y:auto; display:none; }
+.dog-dropdown.open { display:block; }
+.dog-option { padding:10px 16px; cursor:pointer; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.05); transition:background 0.15s; }
+.dog-option:hover { background:var(--dark4); color:var(--gold); }
+.selected-dog { background:var(--dark4); border:1px solid rgba(200,168,75,0.3); padding:16px; margin-top:12px; display:none; }
+.selected-dog.visible { display:block; }
+.selected-dog-name { font-family:'Oswald',sans-serif; font-size:18px; color:var(--white); }
+.selected-dog-info { font-size:12px; color:var(--cream-dim); margin-top:4px; }
+.clear-dog { float:right; background:none; border:none; color:var(--cream-dim); cursor:pointer; font-size:16px; }
+
+/* NODE MODAL */
+.node-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:1000; align-items:center; justify-content:center; }
+.node-modal.open { display:flex; }
+.node-modal-box { background:var(--dark2); border:1px solid rgba(200,168,75,0.3); padding:32px; width:520px; max-width:95vw; position:relative; max-height:80vh; overflow-y:auto; }
+.node-modal-title { font-family:'Oswald',sans-serif; font-size:20px; letter-spacing:2px; text-transform:uppercase; color:var(--white); margin-bottom:4px; }
+.node-modal-sub { font-size:13px; color:var(--cream-dim); margin-bottom:24px; }
+.node-modal-close { position:absolute; top:16px; right:16px; background:none; border:none; color:var(--cream-dim); font-size:20px; cursor:pointer; }
+.node-search-results { margin-top:8px; background:var(--dark3); border:1px solid rgba(200,168,75,0.2); max-height:160px; overflow-y:auto; display:none; }
+.node-search-results.open { display:block; }
+.node-result-item { padding:10px 14px; cursor:pointer; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.05); }
+.node-result-item:hover { background:var(--dark4); color:var(--gold); }
+.or-divider { text-align:center; margin:16px 0; position:relative; }
+.or-divider::before { content:''; position:absolute; top:50%; left:0; right:0; height:1px; background:rgba(255,255,255,0.1); }
+.or-divider span { background:var(--dark2); padding:0 12px; font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--cream-dim); position:relative; }
+
+/* FORMS */
+.form-group { margin-bottom:16px; }
+.form-group label { font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); display:block; margin-bottom:6px; }
+.form-group input, .form-group select { width:100%; background:var(--dark3); border:1px solid rgba(200,168,75,0.2); color:var(--cream); padding:10px 14px; font-family:'Source Sans 3',sans-serif; font-size:14px; outline:none; transition:border-color 0.2s; }
+.form-group input:focus, .form-group select:focus { border-color:var(--gold); }
+.form-group select option { background:var(--dark3); }
+.btn-gold { background:var(--gold); color:var(--black); font-family:'Oswald',sans-serif; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 28px; border:none; cursor:pointer; transition:all 0.2s; }
+.btn-gold:hover { background:var(--gold-light); }
+.btn-outline { background:transparent; color:var(--gold); font-family:'Oswald',sans-serif; font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 28px; border:1px solid var(--gold); cursor:pointer; transition:all 0.2s; }
+.btn-outline:hover { background:rgba(200,168,75,0.1); }
+.btn-sm { padding:8px 16px; font-size:11px; }
+.btn-danger { background:rgba(200,50,50,0.15); border:1px solid rgba(200,50,50,0.3); color:#e05555; font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:1px; text-transform:uppercase; padding:6px 14px; cursor:pointer; }
+
+.form-msg { font-size:13px; padding:8px 16px; margin-top:12px; display:none; }
+.form-msg.success { background:rgba(75,200,100,0.15); color:#4bc864; border:1px solid rgba(75,200,100,0.3); }
+.form-msg.error { background:rgba(200,75,75,0.15); color:#e05555; border:1px solid rgba(200,75,75,0.3); }
+
+.loading { text-align:center; padding:40px; color:var(--cream-dim); font-family:'Oswald',sans-serif; letter-spacing:2px; text-transform:uppercase; font-size:13px; }
+.empty { text-align:center; padding:60px; color:var(--cream-dim); }
+
+/* COMMON ANCESTORS TABLE */
+.common-table { width:100%; border-collapse:collapse; margin-top:12px; }
+.common-table th { font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--gold); padding:10px 12px; text-align:left; border-bottom:1px solid rgba(200,168,75,0.2); }
+.common-table td { padding:10px 12px; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--cream); }
+.common-table tr:hover td { background:rgba(200,168,75,0.04); }
+
+/* GENERATION BADGES */
+.gen-badge { display:inline-block; padding:2px 8px; font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:1px; text-transform:uppercase; background:rgba(200,168,75,0.1); color:var(--gold); margin:2px; }
+
+@media(max-width:768px) {
+  .header { padding:16px 20px; }
+  .tab-content { padding:20px; }
+  .breeding-grid { grid-template-columns:1fr; }
+  .breeding-x { padding-top:0; font-size:32px; text-align:center; }
+  .coi-main { flex-direction:column; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-brand">Pointing Dog Collective</div>
+    <div class="header-sub">Pedigree & COI Calculator</div>
+  </div>
+  <button class="back-btn" onclick="window.location.href='/'">← Back to Site</button>
+</div>
+
+<div class="page-tabs">
+  <div class="page-tab active" onclick="switchMainTab(this,'tab-entry')">Enter Pedigree</div>
+  <div class="page-tab" onclick="switchMainTab(this,'tab-breeding')">Breeding Simulator</div>
+  <div class="page-tab" onclick="switchMainTab(this,'tab-view')">View Registry Pedigrees</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 1: PEDIGREE ENTRY
+══════════════════════════════════════════════════════════ -->
+<div id="tab-entry" class="tab-content active">
+  <div class="tree-header">
+    <div>
+      <div class="tree-title">Enter / Edit Pedigree</div>
+      <div class="tree-subtitle">Search for a registered dog, then click any ancestor node to add or link ancestors up to 5 generations</div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div class="dog-search-wrap" style="width:280px">
+        <input class="dog-search-input" id="entry-dog-search" placeholder="Search dog to edit pedigree..." autocomplete="off" oninput="searchDogsFor('entry-dog-search','entry-dog-dropdown','selectEntryDog')">
+        <div class="dog-dropdown" id="entry-dog-dropdown"></div>
+      </div>
+      <button class="btn-gold" onclick="newDogPedigree()">+ New Dog</button>
+    </div>
+  </div>
+
+  <div id="entry-selected-dog" style="display:none;background:var(--dark2);border:1px solid rgba(200,168,75,0.2);padding:16px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-family:'Oswald',sans-serif;font-size:18px;color:var(--white)" id="entry-dog-name">—</div>
+      <div style="font-size:12px;color:var(--cream-dim);margin-top:2px" id="entry-dog-info">—</div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <button class="btn-gold btn-sm" onclick="savePedigree()">Save Pedigree</button>
+      <div id="save-msg" class="form-msg" style="display:inline-block"></div>
+    </div>
+  </div>
+
+  <div id="pedigree-tree-wrap">
+    <div class="empty" style="padding:80px">
+      <div style="font-size:48px;margin-bottom:16px">🌳</div>
+      <div style="font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:2px;text-transform:uppercase;color:var(--cream-dim)">Search for a dog above to start building its pedigree</div>
+    </div>
+  </div>
+
+  <div id="entry-coi-wrap" style="display:none;margin-top:32px">
+    <div class="section-label">Coefficient of Inbreeding (COI)</div>
+    <div id="entry-coi-display"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 2: BREEDING SIMULATOR
+══════════════════════════════════════════════════════════ -->
+<div id="tab-breeding" class="tab-content">
+  <div class="tree-title" style="margin-bottom:8px">Breeding Simulator</div>
+  <div class="tree-subtitle" style="margin-bottom:32px">Select two dogs to calculate the projected COI and ancestry of their offspring</div>
+
+  <div class="breeding-grid">
+    <div class="breeding-dog-card">
+      <div class="breeding-dog-title">🐾 Dog A — Sire</div>
+      <div class="dog-search-wrap">
+        <input class="dog-search-input" id="sire-search" placeholder="Search sire..." autocomplete="off" oninput="searchDogsFor('sire-search','sire-dropdown','selectBreedingDog','sire')">
+        <div class="dog-dropdown" id="sire-dropdown"></div>
+      </div>
+      <div class="selected-dog" id="sire-selected">
+        <button class="clear-dog" onclick="clearBreedingDog('sire')">✕</button>
+        <div class="selected-dog-name" id="sire-name">—</div>
+        <div class="selected-dog-info" id="sire-info">—</div>
+      </div>
+      <div id="sire-mini-tree" style="margin-top:16px"></div>
+    </div>
+
+    <div class="breeding-x">×</div>
+
+    <div class="breeding-dog-card">
+      <div class="breeding-dog-title">🐾 Dog B — Dam</div>
+      <div class="dog-search-wrap">
+        <input class="dog-search-input" id="dam-search" placeholder="Search dam..." autocomplete="off" oninput="searchDogsFor('dam-search','dam-dropdown','selectBreedingDog','dam')">
+        <div class="dog-dropdown" id="dam-dropdown"></div>
+      </div>
+      <div class="selected-dog" id="dam-selected">
+        <button class="clear-dog" onclick="clearBreedingDog('dam')">✕</button>
+        <div class="selected-dog-name" id="dam-name">—</div>
+        <div class="selected-dog-info" id="dam-info">—</div>
+      </div>
+      <div id="dam-mini-tree" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:32px">
+    <button class="btn-gold" onclick="runBreedingSim()" style="padding:16px 48px;font-size:14px;letter-spacing:3px">Calculate Breeding COI</button>
+  </div>
+
+  <div id="breeding-results" style="display:none">
+    <div class="section-label">Projected Offspring Results</div>
+    <div id="breeding-coi-display"></div>
+    <div id="breeding-ancestry"></div>
+    <div id="breeding-common-ancestors" style="margin-top:32px"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 3: VIEW PEDIGREES
+══════════════════════════════════════════════════════════ -->
+<div id="tab-view" class="tab-content">
+  <div class="tree-header" style="margin-bottom:24px">
+    <div>
+      <div class="tree-title">Registry Pedigrees</div>
+      <div class="tree-subtitle">Browse and view full pedigrees for any registered dog</div>
+    </div>
+    <div class="dog-search-wrap" style="width:320px">
+      <input class="dog-search-input" id="view-dog-search" placeholder="Search dog name..." autocomplete="off" oninput="searchDogsFor('view-dog-search','view-dog-dropdown','selectViewDog')">
+      <div class="dog-dropdown" id="view-dog-dropdown"></div>
+    </div>
+  </div>
+  <div id="view-pedigree-wrap">
+    <div class="empty"><div style="font-size:48px;margin-bottom:16px">🔍</div><div style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--cream-dim)">Search for a dog to view its pedigree</div></div>
+  </div>
+  <div id="view-coi-wrap" style="display:none;margin-top:32px"></div>
+</div>
+
+<!-- NODE EDIT MODAL -->
+<div class="node-modal" id="node-modal">
+  <div class="node-modal-box">
+    <button class="node-modal-close" onclick="closeNodeModal()">✕</button>
+    <div class="node-modal-title" id="modal-title">Add Ancestor</div>
+    <div class="node-modal-sub" id="modal-sub">Search the registry or enter manually</div>
+
+    <div class="form-group">
+      <label>Search Registry</label>
+      <input type="text" id="modal-search" placeholder="Type dog name to search..." autocomplete="off" oninput="modalSearch()">
+      <div class="node-search-results" id="modal-search-results"></div>
+    </div>
+
+    <div class="or-divider"><span>or enter manually</span></div>
+
+    <div class="form-group"><label>Dog Name</label><input type="text" id="modal-name" placeholder="Registered name"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Breed</label><select id="modal-breed"><option value="">Unknown</option><option>English Pointer</option><option>German Shorthaired Pointer</option><option>Brittany</option><option>Vizsla</option><option>Weimaraner</option><option>Irish Setter</option><option>English Setter</option><option>Gordon Setter</option></select></div>
+      <div class="form-group"><label>Year Born</label><input type="text" id="modal-year" placeholder="e.g. 2018"></div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn-gold" onclick="saveNodeEntry()">Add to Pedigree</button>
+      <button class="btn-danger" id="modal-remove-btn" onclick="removeNodeEntry()" style="display:none">Remove</button>
+    </div>
+    <div id="modal-msg" class="form-msg"></div>
+  </div>
+</div>
+
+<script>
+const SURL = 'https://tbipdfaganpfqlsbdtuv.supabase.co';
+const SKEY = 'sb_publishable_lg7ePNVVAz8UMvZ_GLZmuA_Sk5JaT6Z';
+const sb = supabase.createClient(SURL, SKEY);
+
+// State
+let currentEntryDog = null;    // dog being edited
+let pedigreeData = {};          // position -> {name, breed, year, id}
+let activeNodePos = null;       // which node is being edited
+let breedingDogs = { sire: null, dam: null };
+let breedingSirePedigree = {};
+let breedingDamPedigree = {};
+
+// Position system: 1=subject, 2=sire, 3=dam, 4=sire's sire, 5=sire's dam, 6=dam's sire, 7=dam's dam
+// Gen N has positions 2^(N-1) to 2^N - 1
+// Children of pos P: sire=2P, dam=2P+1
+
+const MAX_GEN = 5; // 5 generations = positions 1-31
+
+function posGeneration(pos) { return Math.floor(Math.log2(pos)); }
+function posSide(pos) {
+  if (pos === 1) return 'subject';
+  let p = pos;
+  while (p > 3) p = Math.floor(p/2);
+  return p === 2 ? 'sire' : 'dam';
+}
+
+// ─── INIT ──────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // check URL params
+  const params = new URLSearchParams(window.location.search);
+  const dogId = params.get('dog');
+  if (dogId) loadDogForEntry(dogId);
+});
+
+// ─── TAB SWITCHING ─────────────────────────────────────────
+function switchMainTab(btn, tabId) {
+  document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ─── DOG SEARCH ────────────────────────────────────────────
+let searchTimers = {};
+async function searchDogsFor(inputId, dropdownId, callback, extra) {
+  clearTimeout(searchTimers[inputId]);
+  searchTimers[inputId] = setTimeout(async () => {
+    const q = document.getElementById(inputId).value.trim();
+    const dd = document.getElementById(dropdownId);
+    if (q.length < 2) { dd.classList.remove('open'); return; }
+    const { data } = await sb.from('dogs').select('id,registered_name,breed,dob').ilike('registered_name',`%${q}%`).limit(8);
+    if (!data?.length) { dd.innerHTML='<div class="dog-option" style="color:var(--cream-dim)">No dogs found</div>'; dd.classList.add('open'); return; }
+    dd.innerHTML = data.map(d=>`<div class="dog-option" onclick="${callback}('${d.id}','${escJs(d.registered_name)}','${escJs(d.breed||'')}','${d.dob||''}',${extra?`'${extra}'`:'null'})">${d.registered_name}<span style="color:var(--cream-dim);font-size:11px;margin-left:8px">${d.breed||''}</span></div>`).join('');
+    dd.classList.add('open');
+  }, 300);
+}
+
+function escJs(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+
+// Close dropdowns on outside click
+document.addEventListener('click', e => {
+  document.querySelectorAll('.dog-dropdown').forEach(dd => {
+    if (!dd.contains(e.target) && !e.target.classList.contains('dog-search-input')) dd.classList.remove('open');
+  });
+  const mr = document.getElementById('modal-search-results');
+  if (mr && !mr.contains(e.target) && e.target.id !== 'modal-search') mr.classList.remove('open');
+});
+
+// ─── ENTRY TAB ─────────────────────────────────────────────
+async function selectEntryDog(id, name, breed, dob) {
+  document.getElementById('entry-dog-dropdown').classList.remove('open');
+  document.getElementById('entry-dog-search').value = name;
+  await loadDogForEntry(id);
+}
+
+async function loadDogForEntry(dogId) {
+  const { data: dog } = await sb.from('dogs').select('*').eq('id', dogId).single();
+  if (!dog) return;
+  currentEntryDog = dog;
+  document.getElementById('entry-selected-dog').style.display = 'flex';
+  document.getElementById('entry-dog-name').textContent = dog.registered_name;
+  document.getElementById('entry-dog-info').textContent = `${dog.breed||'Unknown breed'} · ${dog.sex||''} · ${dog.dob||'DOB unknown'}`;
+
+  // Load existing pedigree positions
+  pedigreeData = {};
+  pedigreeData[1] = { name: dog.registered_name, breed: dog.breed, year: dog.dob?.substring(0,4)||'', id: dog.id };
+
+  const { data: positions } = await sb.from('pedigree_positions').select('*').eq('dog_id', dogId).order('position');
+  if (positions) positions.forEach(p => {
+    pedigreeData[p.position] = { name: p.ancestor_name, id: p.ancestor_id, position: p.position };
+  });
+
+  // Also prefill from old text fields if they exist
+  if (dog.sire && !pedigreeData[2]) pedigreeData[2] = { name: dog.sire };
+  if (dog.dam && !pedigreeData[3]) pedigreeData[3] = { name: dog.dam };
+  if (dog.sire_sire && !pedigreeData[4]) pedigreeData[4] = { name: dog.sire_sire };
+  if (dog.sire_dam && !pedigreeData[5]) pedigreeData[5] = { name: dog.sire_dam };
+  if (dog.dam_sire && !pedigreeData[6]) pedigreeData[6] = { name: dog.dam_sire };
+  if (dog.dam_dam && !pedigreeData[7]) pedigreeData[7] = { name: dog.dam_dam };
+
+  renderPedigreeTree('pedigree-tree-wrap', pedigreeData, true);
+  computeAndShowCOI('entry-coi-wrap', 'entry-coi-display', pedigreeData);
+}
+
+function newDogPedigree() {
+  currentEntryDog = null;
+  pedigreeData = {};
+  document.getElementById('entry-selected-dog').style.display = 'none';
+  document.getElementById('entry-dog-search').value = '';
+  // Show a blank tree for a new dog
+  openNodeModal(1, 'Subject Dog', true);
+}
+
+// ─── PEDIGREE TREE RENDERER ────────────────────────────────
+function renderPedigreeTree(wrapperId, data, editable, maxGen) {
+  maxGen = maxGen || MAX_GEN;
+  const wrap = document.getElementById(wrapperId);
+  const genLabels = ['Subject','Parents','Grandparents','Great-Grandparents','Gg-Grandparents'];
+  let html = '<div class="pedigree-tree">';
+
+  for (let gen = 0; gen < maxGen; gen++) {
+    const startPos = Math.pow(2, gen);
+    const endPos = Math.pow(2, gen+1) - 1;
+    html += `<div class="gen-col"><div class="gen-label">${genLabels[gen]||'Gen '+(gen+1)}</div><div class="gen-nodes">`;
+
+    for (let pos = startPos; pos <= endPos; pos++) {
+      const node = data[pos];
+      const side = posSide(pos);
+      const sideClass = side === 'sire' ? 'sire-line' : side === 'dam' ? 'dam-line' : '';
+      const subjectClass = pos === 1 ? 'subject' : '';
+      const filledClass = node ? 'filled' : 'empty-node';
+      const editAttr = editable && gen < maxGen ? `onclick="openNodeModal(${pos},'${escJs(node?.name||'')}')"` : '';
+
+      html += `<div class="pedigree-node ${sideClass} ${subjectClass} ${filledClass}" ${editAttr}>`;
+      if (node) {
+        html += `<div class="node-name">${node.name||'Unknown'}</div>`;
+        if (node.breed || node.year) html += `<div class="node-details">${node.breed||''}${node.year?' · '+node.year:''}</div>`;
+      } else if (editable && gen < maxGen) {
+        html += `<div class="node-add">+ Add Ancestor</div>`;
+      } else {
+        html += `<div class="node-add" style="font-size:9px">—</div>`;
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+// ─── NODE MODAL ────────────────────────────────────────────
+function openNodeModal(pos, existingName, isSubject) {
+  activeNodePos = pos;
+  const gen = posGeneration(pos);
+  const genNames = ['Subject','Parent','Grandparent','Great-Grandparent','Gg-Grandparent'];
+  const side = posSide(pos);
+  const sideLabel = side === 'sire' ? 'Sire' : side === 'dam' ? 'Dam' : '';
+
+  document.getElementById('modal-title').textContent = pos === 1 ? 'Subject Dog' : `Add ${genNames[gen]||'Ancestor'}`;
+  document.getElementById('modal-sub').textContent = `Position: Gen ${gen+1}${sideLabel?' · '+sideLabel+' side':''}`;
+
+  const existing = pedigreeData[pos];
+  document.getElementById('modal-name').value = existing?.name || existingName || '';
+  document.getElementById('modal-breed').value = existing?.breed || '';
+  document.getElementById('modal-year').value = existing?.year || '';
+  document.getElementById('modal-search').value = '';
+  document.getElementById('modal-search-results').classList.remove('open');
+  document.getElementById('modal-search-results').innerHTML = '';
+  document.getElementById('modal-msg').style.display = 'none';
+  document.getElementById('modal-remove-btn').style.display = existing ? 'block' : 'none';
+  document.getElementById('node-modal').classList.add('open');
+  setTimeout(() => document.getElementById('modal-name').focus(), 100);
+}
+
+function closeNodeModal() { document.getElementById('node-modal').classList.remove('open'); activeNodePos = null; }
+
+async function modalSearch() {
+  const q = document.getElementById('modal-search').value.trim();
+  const res = document.getElementById('modal-search-results');
+  if (q.length < 2) { res.classList.remove('open'); return; }
+  const { data } = await sb.from('dogs').select('id,registered_name,breed,dob').ilike('registered_name',`%${q}%`).limit(6);
+  if (!data?.length) { res.innerHTML='<div class="node-result-item" style="color:var(--cream-dim)">No matches</div>'; res.classList.add('open'); return; }
+  res.innerHTML = data.map(d=>`<div class="node-result-item" onclick="selectModalDog('${d.id}','${escJs(d.registered_name)}','${escJs(d.breed||'')}','${d.dob?.substring(0,4)||''}')">${d.registered_name}<span style="color:var(--cream-dim);font-size:11px;margin-left:8px">${d.breed||''}</span></div>`).join('');
+  res.classList.add('open');
+}
+
+function selectModalDog(id, name, breed, year) {
+  document.getElementById('modal-name').value = name;
+  document.getElementById('modal-breed').value = breed;
+  document.getElementById('modal-year').value = year;
+  document.getElementById('modal-search').value = name;
+  document.getElementById('modal-search-results').classList.remove('open');
+  pedigreeData[activeNodePos] = { name, breed, year, id };
+}
+
+function saveNodeEntry() {
+  const name = document.getElementById('modal-name').value.trim();
+  if (!name) { showMsgEl('modal-msg','error','Name is required'); return; }
+  pedigreeData[activeNodePos] = {
+    name, breed: document.getElementById('modal-breed').value,
+    year: document.getElementById('modal-year').value,
+    id: pedigreeData[activeNodePos]?.id || null
+  };
+  closeNodeModal();
+  if (currentEntryDog) {
+    renderPedigreeTree('pedigree-tree-wrap', pedigreeData, true);
+    computeAndShowCOI('entry-coi-wrap', 'entry-coi-display', pedigreeData);
+  }
+}
+
+function removeNodeEntry() {
+  if (activeNodePos === 1) return;
+  delete pedigreeData[activeNodePos];
+  closeNodeModal();
+  renderPedigreeTree('pedigree-tree-wrap', pedigreeData, true);
+  computeAndShowCOI('entry-coi-wrap', 'entry-coi-display', pedigreeData);
+}
+
+// ─── SAVE PEDIGREE TO SUPABASE ─────────────────────────────
+async function savePedigree() {
+  const msg = document.getElementById('save-msg');
+  if (!currentEntryDog) { showMsgEl(msg,'error','No dog selected'); return; }
+
+  // Upsert each position
+  const rows = Object.entries(pedigreeData)
+    .filter(([pos]) => parseInt(pos) > 1)
+    .map(([pos, node]) => ({
+      dog_id: currentEntryDog.id,
+      position: parseInt(pos),
+      ancestor_name: node.name,
+      ancestor_id: node.id || null
+    }));
+
+  if (rows.length) {
+    const { error } = await sb.from('pedigree_positions').upsert(rows, { onConflict: 'dog_id,position' });
+    if (error) { showMsgEl(msg,'error',error.message); return; }
+  }
+
+  // Also update sire/dam text fields on dog record
+  const updates = {};
+  if (pedigreeData[2]) updates.sire = pedigreeData[2].name;
+  if (pedigreeData[3]) updates.dam = pedigreeData[3].name;
+  if (pedigreeData[4]) updates.sire_sire = pedigreeData[4].name;
+  if (pedigreeData[5]) updates.sire_dam = pedigreeData[5].name;
+  if (pedigreeData[6]) updates.dam_sire = pedigreeData[6].name;
+  if (pedigreeData[7]) updates.dam_dam = pedigreeData[7].name;
+  if (Object.keys(updates).length) await sb.from('dogs').update(updates).eq('id', currentEntryDog.id);
+
+  showMsgEl(msg,'success','Pedigree saved!');
+}
+
+// ─── COI CALCULATION ───────────────────────────────────────
+// Wright's Coefficient of Inbreeding
+// Requires knowing which ancestors appear on BOTH sire and dam sides
+function computeCOI(data) {
+  // Build ancestor lists by position
+  // For each position, get all ancestor positions (walking up tree)
+  function getAncestors(pos, gen, visited) {
+    if (gen > MAX_GEN || !data[pos] || visited.has(pos)) return {};
+    visited.add(pos);
+    const result = {};
+    result[data[pos].name] = result[data[pos].name] || [];
+    result[data[pos].name].push({ pos, gen });
+    const sireAnc = getAncestors(pos*2, gen+1, new Set(visited));
+    const damAnc = getAncestors(pos*2+1, gen+1, new Set(visited));
+    [sireAnc, damAnc].forEach(anc => {
+      Object.entries(anc).forEach(([name, paths]) => {
+        result[name] = result[name] || [];
+        result[name].push(...paths);
+      });
+    });
+    return result;
+  }
+
+  // Get ancestors of sire (pos 2) and dam (pos 3)
+  const sireAncs = getAncestors(2, 1, new Set());
+  const damAncs = getAncestors(3, 1, new Set());
+
+  // Find common ancestors
+  const common = {};
+  Object.keys(sireAncs).forEach(name => {
+    if (damAncs[name]) {
+      common[name] = { sire: sireAncs[name], dam: damAncs[name] };
+    }
+  });
+
+  // Wright's formula: F = Σ [(0.5)^(L1+L2+1) * (1+FA)]
+  // L1 = generations from sire to common ancestor
+  // L2 = generations from dam to common ancestor
+  // FA = inbreeding of common ancestor (assume 0 for simplicity)
+  let coi = 0;
+  const contributions = [];
+
+  Object.entries(common).forEach(([name, { sire: sirePaths, dam: damPaths }]) => {
+    let ancestorCOI = 0;
+    sirePaths.forEach(sp => {
+      damPaths.forEach(dp => {
+        const contribution = Math.pow(0.5, sp.gen + dp.gen + 1);
+        ancestorCOI += contribution;
+        coi += contribution;
+      });
+    });
+    contributions.push({ name, coi: ancestorCOI, sire: sirePaths, dam: damPaths });
+  });
+
+  contributions.sort((a,b) => b.coi - a.coi);
+  return { coi: Math.min(coi, 1), contributions, commonAncestors: common };
+}
+
+// Ancestry percentages (how much blood from each ancestor)
+function computeAncestry(data) {
+  const bloodMap = {};
+  function walk(pos, blood) {
+    if (!data[pos] || blood < 0.001) return;
+    const name = data[pos].name;
+    bloodMap[name] = (bloodMap[name] || 0) + blood;
+    walk(pos*2, blood/2);
+    walk(pos*2+1, blood/2);
+  }
+  if (data[2]) walk(2, 0.5);
+  if (data[3]) walk(3, 0.5);
+
+  return Object.entries(bloodMap)
+    .map(([name, pct]) => ({ name, pct }))
+    .sort((a,b) => b.pct - a.pct)
+    .filter(a => a.pct >= 0.001);
+}
+
+function computeSides(data) {
+  const sireNames = new Set();
+  const damNames = new Set();
+  function walk(pos, side) {
+    if (!data[pos]) return;
+    if (side === 'sire') sireNames.add(data[pos].name);
+    else damNames.add(data[pos].name);
+    walk(pos*2, side);
+    walk(pos*2+1, side);
+  }
+  walk(2, 'sire'); walk(3, 'dam');
+  return { sireNames, damNames };
+}
+
+function computeAndShowCOI(wrapId, displayId, data) {
+  const wrap = document.getElementById(wrapId);
+  const display = document.getElementById(displayId);
+  if (!wrap || !display) return;
+
+  // Need at least sire and dam
+  if (!data[2] && !data[3]) { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+
+  const { coi, contributions } = computeCOI(data);
+  const ancestry = computeAncestry(data);
+  const { sireNames, damNames } = computeSides(data);
+  const coiPct = (coi * 100).toFixed(2);
+
+  let coiClass, coiDesc, barColor;
+  if (coi < 0.03) { coiClass='coi-green'; coiDesc='Low inbreeding. This pedigree shows good genetic diversity.'; barColor='var(--green)'; }
+  else if (coi < 0.06) { coiClass='coi-yellow'; coiDesc='Moderate inbreeding. Some common ancestors present. Consider genetic diversity.'; barColor='var(--yellow)'; }
+  else if (coi < 0.125) { coiClass='coi-orange'; coiDesc='Elevated inbreeding. Notable common ancestors on both sides. Use caution.'; barColor='var(--orange)'; }
+  else { coiClass='coi-red'; coiDesc='High inbreeding coefficient. Significant health risks may be present.'; barColor='var(--red)'; }
+
+  const barWidth = Math.min((coi / 0.25) * 100, 100).toFixed(1);
+
+  let html = `
+  <div class="coi-panel">
+    <div class="coi-main">
+      <div>
+        <div class="coi-number ${coiClass}">${coiPct}%</div>
+        <div class="coi-label">Coefficient of Inbreeding</div>
+      </div>
+      <div class="coi-desc">${coiDesc}</div>
+      <div class="coi-bar-wrap">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--cream-dim)"><span>0%</span><span>Low</span><span>Moderate</span><span>High</span><span>25%+</span></div>
+        <div class="coi-bar-track">
+          <div class="coi-bar-fill" style="width:${barWidth}%;background:${barColor}"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <span style="font-size:11px;padding:2px 8px;background:rgba(75,200,100,0.15);color:var(--green)">0–3% Ideal</span>
+          <span style="font-size:11px;padding:2px 8px;background:rgba(232,200,75,0.15);color:var(--yellow)">3–6% Moderate</span>
+          <span style="font-size:11px;padding:2px 8px;background:rgba(232,136,75,0.15);color:var(--orange)">6–12% Elevated</span>
+          <span style="font-size:11px;padding:2px 8px;background:rgba(224,85,85,0.15);color:var(--red)">12%+ High</span>
+        </div>
+      </div>
+    </div>`;
+
+  // Common ancestors
+  if (contributions.length > 0) {
+    html += `<div class="ancestry-section"><div class="section-label">Common Ancestors (Source of Inbreeding)</div>
+    <table class="common-table"><thead><tr><th>Ancestor</th><th>COI Contribution</th><th>Sire-Side Paths</th><th>Dam-Side Paths</th></tr></thead><tbody>`;
+    contributions.forEach(c => {
+      html += `<tr><td><strong>${c.name}</strong></td><td style="color:var(--gold);font-family:'Oswald',sans-serif">${(c.coi*100).toFixed(3)}%</td>
+      <td>${c.sire.map(p=>`<span class="gen-badge">Gen ${p.gen}</span>`).join('')}</td>
+      <td>${c.dam.map(p=>`<span class="gen-badge">Gen ${p.gen}</span>`).join('')}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  } else {
+    html += `<div style="margin-top:16px;padding:16px;background:rgba(75,200,100,0.08);border:1px solid rgba(75,200,100,0.2);color:var(--green);font-size:13px">✓ No common ancestors found — excellent genetic diversity</div>`;
+  }
+
+  // Ancestry breakdown
+  if (ancestry.length > 0) {
+    html += `<div class="ancestry-section"><div class="section-label" style="margin-top:24px">Ancestry Breakdown</div>`;
+    ancestry.slice(0, 20).forEach(a => {
+      const pctDisplay = (a.pct * 100).toFixed(2);
+      const barW = (a.pct * 100).toFixed(1);
+      const onSire = sireNames.has(a.name);
+      const onDam = damNames.has(a.name);
+      const sideClass = (onSire && onDam) ? 'side-both' : onSire ? 'side-sire' : 'side-dam';
+      const sideLabel = (onSire && onDam) ? 'Both Sides' : onSire ? 'Sire Side' : 'Dam Side';
+      html += `<div class="ancestor-row">
+        <div class="ancestor-name">${a.name}</div>
+        <div class="ancestor-bar"><div class="ancestor-bar-fill" style="width:${barW}%"></div></div>
+        <div class="ancestor-pct">${pctDisplay}%</div>
+        <span class="ancestor-side ${sideClass}">${sideLabel}</span>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  html += '</div>';
+  display.innerHTML = html;
+}
+
+// ─── BREEDING SIMULATOR ────────────────────────────────────
+async function selectBreedingDog(id, name, breed, dob, role) {
+  document.getElementById(`${role}-dropdown`).classList.remove('open');
+  document.getElementById(`${role}-search`).value = name;
+
+  const { data: dog } = await sb.from('dogs').select('*').eq('id', id).single();
+  breedingDogs[role] = dog;
+
+  document.getElementById(`${role}-selected`).classList.add('visible');
+  document.getElementById(`${role}-name`).textContent = name;
+  document.getElementById(`${role}-info`).textContent = `${breed||'Unknown breed'} · ${dob||'DOB unknown'}`;
+
+  // Load pedigree for this dog
+  const pData = {};
+  pData[1] = { name: dog.registered_name, breed: dog.breed };
+  if (dog.sire) pData[2] = { name: dog.sire };
+  if (dog.dam) pData[3] = { name: dog.dam };
+  if (dog.sire_sire) pData[4] = { name: dog.sire_sire };
+  if (dog.sire_dam) pData[5] = { name: dog.sire_dam };
+  if (dog.dam_sire) pData[6] = { name: dog.dam_sire };
+  if (dog.dam_dam) pData[7] = { name: dog.dam_dam };
+
+  const { data: positions } = await sb.from('pedigree_positions').select('*').eq('dog_id', id);
+  if (positions) positions.forEach(p => { pData[p.position] = { name: p.ancestor_name, id: p.ancestor_id }; });
+
+  if (role === 'sire') breedingSirePedigree = pData;
+  else breedingDamPedigree = pData;
+
+  renderPedigreeTree(`${role}-mini-tree`, pData, false, 3);
+}
+
+function clearBreedingDog(role) {
+  breedingDogs[role] = null;
+  if (role === 'sire') breedingSirePedigree = {};
+  else breedingDamPedigree = {};
+  document.getElementById(`${role}-selected`).classList.remove('visible');
+  document.getElementById(`${role}-search`).value = '';
+  document.getElementById(`${role}-mini-tree`).innerHTML = '';
+  document.getElementById('breeding-results').style.display = 'none';
+}
+
+function runBreedingSim() {
+  if (!breedingDogs.sire || !breedingDogs.dam) {
+    alert('Please select both a sire and a dam first'); return;
+  }
+
+  // Build hypothetical offspring pedigree
+  // Offspring pos 1, sire at pos 2, dam at pos 3
+  // Sire's ancestors shift: sire's pos P -> offspring pos P*2 (sire side)
+  // Dam's ancestors shift: dam's pos P -> offspring pos P*2+1... wait:
+  // Actually: offspring sire = pos 2, sire's sire = pos 4, sire's dam = pos 5
+  // So sire's pedigree pos P maps to offspring pos P*2 (roughly)
+  // More precisely: sire is pos 2 in offspring. Sire's sire (pos 2 in sire pedigree) -> pos 4 in offspring
+  // Formula: offspring_pos = sire_pos_in_sire_pedigree * 2 (if sire side)
+
+  const offspringPed = {};
+  offspringPed[1] = { name: `${breedingDogs.sire.registered_name} × ${breedingDogs.dam.registered_name} (projected)` };
+
+  function shiftPedigree(sourcePed, basePos) {
+    Object.entries(sourcePed).forEach(([pos, node]) => {
+      const p = parseInt(pos);
+      if (p === 0) return;
+      const newPos = p === 1 ? basePos : basePos * Math.pow(2, posGeneration(p)) + (p - Math.pow(2, posGeneration(p)));
+      // Simpler: recursively map
+    });
+  }
+
+  // Direct mapping: sire's positions -> multiply by 2 for sire side, multiply by 2 and add 1 for dam side... 
+  // Easiest: just place sire at 2 and dam at 3, then copy their ancestors
+  function mapToOffspring(sourcePed, side) {
+    // side 0 = sire (pos 2), side 1 = dam (pos 3)
+    Object.entries(sourcePed).forEach(([posStr, node]) => {
+      const p = parseInt(posStr);
+      if (!node) return;
+      // Map: pos 1 -> 2 or 3, pos 2 -> 4 or 6, pos 3 -> 5 or 7, etc.
+      let newPos;
+      if (p === 1) { newPos = side === 0 ? 2 : 3; }
+      else {
+        const gen = posGeneration(p);
+        const offset = p - Math.pow(2, gen);
+        newPos = Math.pow(2, gen+1) + offset * 2 + side;
+      }
+      if (newPos <= 31) offspringPed[newPos] = node;
+    });
+  }
+
+  mapToOffspring(breedingSirePedigree, 0);
+  mapToOffspring(breedingDamPedigree, 1);
+
+  document.getElementById('breeding-results').style.display = 'block';
+  computeAndShowCOI('breeding-results', 'breeding-coi-display', offspringPed);
+
+  // Show projected offspring pedigree
+  const ancestryEl = document.getElementById('breeding-ancestry');
+  ancestryEl.innerHTML = '<div class="section-label" style="margin-top:32px">Projected Offspring Pedigree (3 Generations)</div>';
+  ancestryEl.innerHTML += '<div id="offspring-tree-wrap"></div>';
+  setTimeout(() => renderPedigreeTree('offspring-tree-wrap', offspringPed, false, 4), 50);
+}
+
+// ─── VIEW TAB ──────────────────────────────────────────────
+async function selectViewDog(id, name, breed, dob) {
+  document.getElementById('view-dog-dropdown').classList.remove('open');
+  document.getElementById('view-dog-search').value = name;
+
+  const { data: dog } = await sb.from('dogs').select('*').eq('id', id).single();
+  if (!dog) return;
+
+  const viewData = {};
+  viewData[1] = { name: dog.registered_name, breed: dog.breed, year: dog.dob?.substring(0,4) };
+  if (dog.sire) viewData[2] = { name: dog.sire };
+  if (dog.dam) viewData[3] = { name: dog.dam };
+  if (dog.sire_sire) viewData[4] = { name: dog.sire_sire };
+  if (dog.sire_dam) viewData[5] = { name: dog.sire_dam };
+  if (dog.dam_sire) viewData[6] = { name: dog.dam_sire };
+  if (dog.dam_dam) viewData[7] = { name: dog.dam_dam };
+
+  const { data: positions } = await sb.from('pedigree_positions').select('*').eq('dog_id', id);
+  if (positions) positions.forEach(p => { viewData[p.position] = { name: p.ancestor_name }; });
+
+  const wrap = document.getElementById('view-pedigree-wrap');
+  wrap.innerHTML = `<div style="font-family:'Oswald',sans-serif;font-size:18px;color:var(--white);margin-bottom:20px">${dog.registered_name} <span style="font-size:13px;color:var(--cream-dim);letter-spacing:1px">${dog.breed||''} · ${dog.dob||''}</span></div><div id="view-tree-inner"></div>`;
+  setTimeout(() => renderPedigreeTree('view-tree-inner', viewData, false), 50);
+
+  const coiWrap = document.getElementById('view-coi-wrap');
+  coiWrap.style.display = 'block';
+  coiWrap.innerHTML = '<div class="section-label">Coefficient of Inbreeding</div><div id="view-coi-inner"></div>';
+  setTimeout(() => computeAndShowCOI('view-coi-wrap', 'view-coi-inner', viewData), 100);
+}
+
+// ─── UTILS ─────────────────────────────────────────────────
+function showMsgEl(el, type, text) {
+  if (typeof el === 'string') el = document.getElementById(el);
+  el.style.display = 'block';
+  el.className = 'form-msg ' + type;
+  el.textContent = text;
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+</script>
+</body>
+</html>
